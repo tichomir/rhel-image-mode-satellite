@@ -1,0 +1,43 @@
+#!/bin/bash -x
+## This script builds latest patch for systems that are already installed and registered with Satellite
+## When the image for these systems is built, make sure the container image is consumed from Satellite (during a build with image builder)
+## A separate job will address building latest image for Image Based Provisioning
+
+## Path and filename where your container file is stored
+export src_registry_repo_tag='<%= input("src_registry_repo_tag") -%>'
+export src_registry_user='<%= input("src_registry_user") -%>'
+export src_registry_pass='<%= input("src_registry_pass") -%>'
+export container_file_absolute='<%= input("container_file_absolute") -%>'
+export dst_registry_repo_tag='<%= input("dst_registry_repo_tag") -%>'
+export dst_registry_user='<%= input("dst_registry_user") -%>'
+export dst_registry_pass='<%= input("dst_registry_pass") -%>'
+export repo_name='<%= input("repo_name") -%'
+
+## Check if podman installed and if not, install it
+if [ -z $podman_installed ]; then
+    dnf install -y podman
+fi    
+
+## Login to source
+podman login $(echo $src_registry_repo_tag | cut -d"/" -f1) -u="$src_registry_user" -p="$src_registry_pass"
+## add check
+
+## Login to destination
+podman login $(echo $dst_registry_repo_tag | cut -d"/" -f1) -u="$dst_registry_user" -p="$dst_registry_pass"
+## add check for success
+
+
+
+## First let's pull latest content from registry
+podman pull $src_registry_repo_tag 
+
+## Let's build latest image
+podman build -f $container_file_absolute -t $dst_registry_repo_tag
+
+## Wait a bit
+#sleep 60
+## Let's push latest to registry
+podman push $dst_registry_repo_tag
+
+## Ready
+#ehco "All has been created successfully"
