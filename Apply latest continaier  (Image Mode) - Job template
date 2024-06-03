@@ -1,0 +1,39 @@
+- name: bootc upgrade
+  hosts: all
+  gather_facts: yes
+  vars:
+  tasks:
+    - name: Execute bootc upgrade
+      ansible.builtin.shell: "/usr/bin/bootc upgrade"
+      register: command_results
+      no_log: false
+      ignore_errors: true
+
+    - name: Set result
+      ansible.builtin.set_fact:
+        task_results:
+          report: "{{command_results.stdout|replace(' ', ' ')}}\n{{command_results.stderr|replace(' ', ' ')}}"
+          message: "bootc upgrade complete. Expand for details."
+          alert: true
+
+    - when: "'Queued for next boot' in command_results.stdout"
+      block:
+        - name: Schedule insights-client after boot
+          file:
+            path: "/etc/insights-client/.run_insights_client_next_boot"
+            state: touch
+        - name: Enable boot service
+          systemd:
+            name: insights-client-boot.service
+            enabled: true
+          ignore_errors: true
+        - name: Reboot the machine
+          reboot:
+            reboot_timeout: 1800
+        - name: Check the Uptime of the servers
+          shell: "uptime"
+          register: Uptime
+
+    - name: Print Task Result
+      ansible.builtin.debug:
+        var: task_results
